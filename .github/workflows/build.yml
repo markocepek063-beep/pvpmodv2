@@ -1,0 +1,36 @@
+name: build
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Sort files into the right folders
+        run: |
+          J=src/main/java/dev/pvpmod
+          mv_if() { [ -f "$1" ] && mkdir -p "$(dirname "$2")" && mv "$1" "$2" || true; }
+          for f in PvpModClient PvpTint; do mv_if $f.java $J/$f.java; done
+          mv_if PvpConfig.java $J/config/PvpConfig.java
+          for f in CrystalScreen FloatSlider ItemDetailScreen ItemsScreen MainScreen ParticlesScreen PvpScreen TotemScreen; do mv_if $f.java $J/gui/$f.java; done
+          for f in EndCrystalEntityModelMixin GameRendererMixin HeldItemRendererMixin HeldItemTintMixin ItemRendererMixin LayerRenderStateMixin ParticleManagerMixin; do mv_if $f.java $J/mixin/$f.java; done
+          mv_if TintingVertexConsumer.java $J/render/TintingVertexConsumer.java
+          for f in fabric.mod.json pvpmod.mixins.json pvpmod.tint.mixins.json; do mv_if $f src/main/resources/$f; done
+          find src -type f | sort
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 9.2.0
+      - run: gradle build --no-daemon
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pvpmod-jar
+          path: build/libs/*.jar
